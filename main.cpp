@@ -16,7 +16,10 @@ private:
   int capacity;
 
 public:
-  spsc(int size) : capacity(size), buffer(size) {
+  spsc(int size) : capacity(size + 1), buffer(size + 1) {
+    // adding +1 to the cap and buffer, bc we need an
+    // empty slot to make sure that write idx doesnt
+    // rewrite over stuff that hasnt been read yet
     // dont really undersstand how the memory_order_x flags work, just been
     // using acquire when i want to load it safely and release to tell everyone
     // im done
@@ -52,17 +55,48 @@ public:
 
 int main() {
   // testing it
-  //   spsc<string> test;
-  //   thread sender([&] {
-  //     test.send("mario");
-  //     test.send("jump");
-  //     test.send("goomba");
-  //   });
-  //   thread receiver([&] {
-  //     cout << test.receive() << endl;
-  //     cout << test.receive() << endl;
-  //     cout << test.receive() << endl;
-  //   });
-  //   sender.join();
-  //   receiver.join();
+  spsc<string> test(3);
+  thread sender([&] {
+    test.write("mario");
+    test.write("jump");
+    test.write("goomba");
+    test.write("bowser");
+  });
+  sender.join();
+
+  thread receiver([&] {
+    auto msg1 = test.read();
+
+    if (msg1) {
+      cout << *msg1 << endl;
+    } else {
+      cout << "empty" << endl;
+    }
+    auto msg2 = test.read();
+
+    if (msg2) {
+      cout << *msg2 << endl;
+    } else {
+      cout << "empty" << endl;
+    }
+    auto msg3 = test.read();
+
+    if (msg3) {
+      cout << *msg3 << endl;
+    } else {
+      cout << "empty" << endl;
+    }
+  });
+
+  receiver.join();
+  thread reciever2([&] {
+    auto msg = test.read();
+
+    if (msg) {
+      cout << *msg << endl;
+    } else {
+      cout << "empty" << endl;
+    }
+  });
+  reciever2.join();
 }
